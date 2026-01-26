@@ -36,6 +36,7 @@ obj/%.o: src/%.c
 git:
 	git add .
 	git commit -m "$(commit)"
+	git push
 # Clean: Remove build artifacts
 clean:
 	rm -rf obj bin
