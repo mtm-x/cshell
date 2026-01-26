@@ -33,6 +33,9 @@ obj/%.o: src/%.c
 	@mkdir -p obj
 	$(CC) $(CFLAGS) -c $< -o $@
 
+git:
+	git add .
+	git commit -m "$(commit)"
 # Clean: Remove build artifacts
 clean:
 	rm -rf obj bin
