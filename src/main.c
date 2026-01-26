@@ -15,7 +15,7 @@ int input_handler(char *command);
 //int stat(char *, struct stat *);
 
 
-int main(int argc, char *argv[]) {
+int main(void) {
   // Flush after every printf
   setbuf(stdout, NULL);
   
