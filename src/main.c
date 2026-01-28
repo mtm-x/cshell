@@ -7,17 +7,16 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
-/* TODO:
- * there is no single shell like feature will work right now lol
- * Error handling sucks 
- * code is absolute mess
- * Poor memory management
- */
+/** TODO:
+ *  there is no single shell like feature will work right now lol
+ *  Error handling sucks 
+ *  code is absolute mess
+ *  Poor memory management*/
 
 #define MAX_COMMAND_SIZE 1024
+
 bool CMD_NOT_FOUND = true;
 
-/*No use for this all because of execvp() did all the job pew!*/
 typedef enum {
 	TYPE,
 	EXEC,
@@ -27,6 +26,7 @@ typedef enum {
 int input_handler(char *command);
 int handle_type (char *command);
 int find_exe_path(char *command, PathFlag flag);
+
 
 
 int main(void) {
@@ -69,14 +69,30 @@ int input_handler ( char *command ) {
 
 	//CMD_NOT_FOUND need to improve this
 	//
-	if (strncmp(command, "type", 4) == 0 ) {
+	if (strncmp(command, "type", 4) == 0) {
 		handle_type(command+5);
 		return 0;
 		}
 	
+	if (strncmp(command, "pwd", 3) == 0) {
+		char pwd_addr[MAX_COMMAND_SIZE]; /*Do we need to allocate this much idk rn the time is 01:58 AM :(*/	
+		printf("%s \n", getcwd(pwd_addr, MAX_COMMAND_SIZE)); 
+		return 0;
+	}
+
+	if (strncmp(command, "cd", 2) == 0){
+		if(strncmp(command+3, "~", 1) == 0){
+			/*chdir cannnot handle ~*/
+
+		}
+		int ret = chdir(command+3);
+		if(ret == -1) {
+			printf("cd: %s: No such file or directory \n", command+3);
+		}
+		return 0;
+	}
 
 	char *command_cpy = strdup(command);
-
 	if (command_cpy){
 	
 		char *token = strtok(command_cpy, " ");
@@ -101,7 +117,7 @@ int input_handler ( char *command ) {
 		if (pid == 0){
 			int ret = execvp(exe_name, arr);
 			if ( ret == -1 ) {
-				perror ("execvp");
+				//perror ("execvp");
 				printf("%s: command not found\n", exe_name);
 				exit(1);
 			}
@@ -116,10 +132,11 @@ int input_handler ( char *command ) {
 		 * PathFlag isExec = find_exe_path(exe_name, EXEC);
 		 * if (isExec == EXEC){
 		 *	printf("working exec \n");
-		 * }
+			}
 		 */
 
-	}	
+	}
+		
 	return 0;
 }
 
@@ -155,7 +172,8 @@ int find_exe_path (char *command, PathFlag flag) {
 		while(token){
 
 			/** DIR is a tpye from dirent.h
-			  * opendir(), readdir() and closedir() are types of DIR */
+			  * opendir() is type of DIR
+			  * readdir() is type of struct dirent */
 			DIR *dir = opendir(token);
 
 			if (dir){
@@ -178,6 +196,7 @@ int find_exe_path (char *command, PathFlag flag) {
 							(( s_buf.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH)) != 0))
 						{
 							if (flag == TYPE) printf("%s is %s \n", file_entry->d_name, absolute_path);
+							if (flag == EXEC) return EXEC;
 							EXE_FOUND = true;
 
 						}
