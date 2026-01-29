@@ -7,22 +7,24 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
-/** TODO:
- *  there is no single shell like feature will work right now lol
- *  Error handling sucks 
- *  code is absolute mess
- *  Poor memory management*/
+/* TODO:
+ * there is no single shell like feature will work right now lol
+ * Error handling sucks 
+ * code is absolute mess
+ * Poor memory management
+ */
 
 #define MAX_COMMAND_SIZE 1024
+#define MAX_HOME_DIR_SIZE  50 /* Really idk */
 
-bool CMD_NOT_FOUND = true;
+/*No use for this all because of execvp() did all the job pew!*/
 
 typedef enum {
 	TYPE,
 	EXEC,
 }PathFlag;
 
-// Function prototypes
+/* Function prototypes */
 int input_handler(char *command);
 int handle_type (char *command);
 int find_exe_path(char *command, PathFlag flag);
@@ -30,29 +32,28 @@ int find_exe_path(char *command, PathFlag flag);
 
 
 int main(void) {
-  // Flush after every printf
+  /* Flush after every printf */
   setbuf(stdout, NULL);
   
   while(1) {
 
 	  printf("$ ");
 
-	  // Define a char array to store the string never try to use string literals char *p these are read only 
+	  /* Define a char array to store the string never try to use string literals char *p these are read only */
 	  char command[MAX_COMMAND_SIZE+1];
-	  // scanf is not good for strings use fgets()
+	  /* scanf is not good for strings use fgets() */
 	  fgets(command, MAX_COMMAND_SIZE+1, stdin);
-	  // If the stdin is '\n' do nothing 
+	  /* If the stdin is '\n' do nothing */
 	  if (strcmp(command, "\n") == 0 ) {
 		  continue;
 	  }
-	  // fgets() take the new line as well we need to trim the last character.
+	  /* fgets() take the new line as well we need to trim the last character.*/
 	  command[strcspn(command, "\n")] = '\0';
 
 	  if (strncmp(command, "exit", 4) == 0 ) {
 		break; 
 	  }
 
-	  CMD_NOT_FOUND = true;
 	  input_handler(command);
 	}
   return 0;
@@ -61,14 +62,11 @@ int main(void) {
 
 int input_handler ( char *command ) {
 
-	if (strncmp(command, "echo", 4) == 0 ) {
-		CMD_NOT_FOUND = false; 
+	if (strncmp(command, "echo", 4) == 0 ) { 
 		printf("%s \n", command+5);
 		return 0;
 	}
 
-	//CMD_NOT_FOUND need to improve this
-	//
 	if (strncmp(command, "type", 4) == 0) {
 		handle_type(command+5);
 		return 0;
@@ -81,14 +79,24 @@ int input_handler ( char *command ) {
 	}
 
 	if (strncmp(command, "cd", 2) == 0){
+		int ret;
 		if(strncmp(command+3, "~", 1) == 0){
+
 			/*chdir cannnot handle ~*/
+			char *home_path = getenv("HOME");
+			char absolute_path[MAX_HOME_DIR_SIZE];
+			snprintf(absolute_path, MAX_HOME_DIR_SIZE, "%s%s", home_path, command+4);
+			ret = chdir(absolute_path);
 
 		}
-		int ret = chdir(command+3);
+		else {
+			ret = chdir(command+3);
+		}
+
 		if(ret == -1) {
 			printf("cd: %s: No such file or directory \n", command+3);
 		}
+
 		return 0;
 	}
 
@@ -107,7 +115,8 @@ int input_handler ( char *command ) {
 
 		/* Simply running exec() family of functions will terminate current process and 
 		 * replace it with the new function i.e what is inside in execvp() 
-		 * use fork() to create a copy of parent process that is our shell is the parent */
+		 * use fork() to create a copy of parent process that is our shell is the parent 
+		 */
 
 		pid_t pid;
 		pid = fork();
@@ -132,17 +141,14 @@ int input_handler ( char *command ) {
 		 * PathFlag isExec = find_exe_path(exe_name, EXEC);
 		 * if (isExec == EXEC){
 		 *	printf("working exec \n");
-			}
+		 *	}
 		 */
-
 	}
 		
 	return 0;
 }
 
 int handle_type ( char *command ) {
-
-		CMD_NOT_FOUND = false;
 
 		if ((strncmp(command, "echo", 4)  == 0) ||
 		   ((strncmp(command, "exit", 4)) == 0) ||  
@@ -163,17 +169,20 @@ int find_exe_path (char *command, PathFlag flag) {
 	bool EXE_FOUND = false;
 	char *search_tar = command;
 	char *path_env = getenv("PATH");
-	/** Important to use the copy since the pointer is to the original $PATH
-	  *  string and strtok will modify that */
+	/* Important to use the copy since the pointer is to the original $PATH
+	 * string and strtok will modify that 
+	 */
 
 	char *path_env_cpy = strdup(path_env); 		
 	if (path_env_cpy){
 		char *token = strtok(path_env_cpy, ":");
 		while(token){
 
-			/** DIR is a tpye from dirent.h
-			  * opendir() is type of DIR
-			  * readdir() is type of struct dirent */
+			/* DIR is a tpye from dirent.h
+			 * opendir() is type of DIR
+			 * readdir() is type of struct dirent 
+			 */
+
 			DIR *dir = opendir(token);
 
 			if (dir){
@@ -185,12 +194,11 @@ int find_exe_path (char *command, PathFlag flag) {
 						snprintf(absolute_path, MAX_COMMAND_SIZE, "%s/%s", token, file_entry->d_name);
 
 						stat(absolute_path, &s_buf);
-						//printf("S_IXUSR: %b, S_IXGRP: %b, S_IXOTH: %b \n", S_IXUSR, S_IXGRP, S_IXOTH);
 					
-						/** (S_IXUSR | S_IXGRP | S_IXOTH)  = 73 or 1001001 then the file is executable 
-						  * ((s_buf.st_mode & S_IFMT) == S_IFREG) checks whether it is a regular file and 
-						  * i really dont know wtf is S_IFMT 
-						  */
+						/* (S_IXUSR | S_IXGRP | S_IXOTH)  = 73 or 1001001 then the file is executable 
+						 * ((s_buf.st_mode & S_IFMT) == S_IFREG) checks whether it is a regular file and 
+						 * i really dont know wtf is S_IFMT 
+						 */
 
 						if (((s_buf.st_mode & S_IFMT) == S_IFREG) &&
 							(( s_buf.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH)) != 0))
